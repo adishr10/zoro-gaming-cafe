@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zoro Gaming Cafe</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #1a1a1a;
+      color: #e0e0e0;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      text-align: center;
+      padding: 30px 0;
+      border-bottom: 2px solid #333;
+      margin-bottom: 40px;
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      color: #00d9ff;
+      text-shadow: 0 0 10px rgba(0, 217, 255, 0.3);
+    }
+
+    .session-controls {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 20px 40px;
+      font-size: 1.2rem;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      font-weight: bold;
+      min-width: 200px;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    section {
+      margin-bottom: 40px;
+    }
+
+    section h2 {
+      color: #00d9ff;
+      margin-bottom: 20px;
+      font-size: 1.8rem;
+    }
+
+    #sessionsContainer {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .session-card {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .session-type {
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: #00d9ff;
+      margin-bottom: 10px;
+    }
+
+    .session-info {
+      margin: 10px 0;
+      color: #b0b0b0;
+    }
+
+    .session-timer {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #4ade80;
+      margin: 15px 0;
+      font-family: 'Courier New', monospace;
+    }
+
+    .btn-end {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+
+    .btn-end:hover {
+      background: #dc2626;
+    }
+
+    .btn-secondary {
+      background: #666;
+      color: white;
+      border: none;
+      padding: 10px 24px;
+      font-size: 0.95rem;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+      font-weight: bold;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: #555;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal.show {
+      display: flex;
+    }
+
+    .modal-content {
+      background: #2a2a2a;
+      border: 2px solid #444;
+      border-radius: 12px;
+      padding: 30px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content h3 {
+      color: #00d9ff;
+      margin-bottom: 15px;
+      font-size: 1.5rem;
+    }
+
+    .modal-content p {
+      margin-bottom: 20px;
+      color: #b0b0b0;
+    }
+
+    .modal-content label {
+      display: block;
+      margin-bottom: 8px;
+      color: #e0e0e0;
+      font-weight: bold;
+    }
+
+    .modal-content input {
+      width: 100%;
+      padding: 12px;
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 6px;
+      color: #e0e0e0;
+      font-size: 1.1rem;
+      margin-bottom: 20px;
+    }
+
+    .modal-content input:focus {
+      outline: none;
+      border-color: #00d9ff;
+      box-shadow: 0 0 5px rgba(0, 217, 255, 0.3);
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-confirm,
+    .btn-cancel {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .btn-confirm {
+      background: #4ade80;
+      color: #1a1a1a;
+    }
+
+    .btn-confirm:hover {
+      opacity: 0.9;
+    }
+
+    .btn-cancel {
+      background: #666;
+      color: white;
+    }
+
+    .btn-cancel:hover {
+      opacity: 0.9;
+    }
+
+    .revenue-date-group {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .revenue-date-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #444;
+    }
+
+    .revenue-date-title {
+      font-size: 1.3rem;
+      color: #00d9ff;
+      font-weight: bold;
+    }
+
+    .revenue-date-total {
+      font-size: 1.2rem;
+      color: #4ade80;
+      font-weight: bold;
+    }
+
+    .revenue-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      margin-bottom: 8px;
+      background: #1a1a1a;
+      border-radius: 6px;
+      border-left: 3px solid #667eea;
+      gap: 10px;
+    }
+
+    .revenue-item-info {
+      flex: 1;
+    }
+
+    .revenue-item-type {
+      font-weight: bold;
+      color: #e0e0e0;
+    }
+
+    .revenue-item-time {
+      font-size: 0.9rem;
+      color: #888;
+    }
+
+    .revenue-item-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      min-width: 120px;
+    }
+
+    .revenue-item-duration {
+      color: #b0b0b0;
+    }
+
+    .revenue-item-amount {
+      font-weight: bold;
+      color: #4ade80;
+      font-size: 1.1rem;
+      white-space: nowrap;
+    }
+
+    .btn-edit-amount {
+      background: #444;
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .btn-edit-amount:hover {
+      background: #555;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: #666;
+      padding: 40px;
+      font-style: italic;
+    }
+
+    @media (max-width: 768px) {
+      header h1 {
+        font-size: 2rem;
+      }
+
+      .session-controls {
+        flex-direction: column;
+      }
+
+      .btn-primary {
+        width: 100%;
+      }
+
+      #sessionsContainer {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Zoro Gaming Cafe</h1>
+    </header>
+
+    <main>
+      <section class="session-controls">
+        <button class="btn-primary" id="addPS5Btn">Add PS5 Session</button>
+        <button class="btn-primary" id="addPoolBtn">Add Pool Session</button>
+      </section>
+
+      <section class="active-sessions">
+        <h2>Active Sessions</h2>
+        <div id="sessionsContainer"></div>
+      </section>
+
+      <section class="revenue-log">
+        <h2>Revenue Log</h2>
+        <div id="revenueContainer"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- End Session / Payment Modal -->
+  <div id="paymentModal" class="modal">
+    <div class="modal-content">
+      <h3>End Session</h3>
+      <p id="sessionSummary"></p>
+      <label for="paymentAmount">Amount Collected:</label>
+      <input type="number" id="paymentAmount" min="0" step="0.01" placeholder="Enter amount" autofocus>
+      <div class="modal-buttons">
+        <button class="btn-confirm" id="confirmPaymentBtn">Save</button>
+        <button class="btn-cancel" id="cancelPaymentBtn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Amount Modal -->
+  <div id="editAmountModal" class="modal">
+    <div class="modal-content">
+      <h3>Edit Amount</h3>
+      <p id="editAmountSummary"></p>
+      <label for="editAmountInput">New Amount:</label>
+      <input type="number" id="editAmountInput" min="0" step="0.01" placeholder="Enter amount">
+      <div class="modal-buttons">
+        <button class="btn-confirm" id="editAmountSaveBtn">Save</button>
+        <button class="btn-cancel" id="editAmountCancelBtn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script>
+    // Supabase config – keep your actual URL and anon key here
+    const SUPABASE_URL = 'https://vvlvbviumkbuoeqtmgmt.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2bHZidml1bWtidW9lcXRtZ210Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMzMDM4MjMsImV4cCI6MjA3ODg3OTgyM30.cL6bqvMuSQntTJ5c3oYIiNr53s8z6XuPIWWciciRtSs';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let activeSessions = [];
+    let completedSessions = [];
+    let currentEndingSession = null;
+    let currentEditingSessionId = null;
+    const timers = {};
+
+    function formatTimeSeconds(seconds) {
+      if (!Number.isFinite(seconds) || seconds < 0) {
+        seconds = 0;
+      }
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      return (
+        String(hours).padStart(2, '0') + ':' +
+        String(minutes).padStart(2, '0') + ':' +
+        String(secs).padStart(2, '0')
+      );
+    }
+
+    function formatDateTime(ts) {
+      const date = new Date(ts);
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function formatDate(ts) {
+      const date = new Date(ts);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
+
+    function getDateKey(ts) {
+      const d = new Date(ts);
+      return d.toISOString().split('T')[0];
+    }
+
+    async function fetchActiveSessions() {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('status', 'active')
+        .order('start_time', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching active sessions:', error);
+        return;
+      }
+
+      activeSessions = data.map(row => ({
+        id: row.id,
+        type: row.session_type,
+        startTime: new Date(row.start_time).getTime(),
+        player_name: row.player_name
+      }));
+
+      renderActiveSessions();
+    }
+
+    async function fetchCompletedSessions() {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .neq('status', 'active')
+        .order('end_time', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching completed sessions:', error);
+        return;
+      }
+
+      completedSessions = data
+        .filter(row => row.end_time)
+        .map(row => {
+          const startMs = new Date(row.start_time).getTime();
+          const endMs = new Date(row.end_time).getTime();
+          const durationSec = Math.floor((endMs - startMs) / 1000);
+          return {
+            id: row.id,
+            type: row.session_type,
+            startTime: startMs,
+            endTime: endMs,
+            duration: durationSec,
+            amount: row.amount || 0,
+            dateKey: getDateKey(endMs),
+            player_name: row.player_name,
+            status: row.status
+          };
+        });
+
+      renderRevenueLog();
+    }
+
+    async function checkCapacityAndAddSession(type, playerName) {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('id, session_type, status')
+        .eq('status', 'active');
+
+      if (error) {
+        alert('Error checking capacity: ' + error.message);
+        return;
+      }
+
+      const ps5Active = data.filter(s => s.session_type === 'PS5').length;
+      const poolActive = data.filter(s => s.session_type === 'Pool').length;
+
+      if (type === 'PS5' && ps5Active >= 5) {
+        alert('Maximum 5 PS5 sessions are already active.');
+        return;
+      }
+      if (type === 'Pool' && poolActive >= 1) {
+        alert('Only 1 Pool session allowed at a time.');
+        return;
+      }
+
+      await addSessionToDB(type, playerName);
+    }
+
+    async function addSessionToDB(type, playerName) {
+      const { data, error } = await supabase
+        .from('sessions')
+        .insert([
+          {
+            session_type: type,
+            player_name: playerName || 'Guest',
+            status: 'active'
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        alert('Error starting session: ' + error.message);
+        return;
+      }
+
+      activeSessions.push({
+        id: data.id,
+        type: data.session_type,
+        startTime: new Date(data.start_time).getTime(),
+        player_name: data.player_name
+      });
+
+      renderActiveSessions();
+    }
+
+    function startTimer(sessionId) {
+      if (timers[sessionId]) {
+        clearInterval(timers[sessionId]);
+      }
+
+      timers[sessionId] = setInterval(() => {
+        updateTimerDisplay(sessionId);
+      }, 1000);
+
+      updateTimerDisplay(sessionId);
+    }
+
+    function updateTimerDisplay(sessionId) {
+      const session = activeSessions.find(s => s.id === sessionId);
+      if (!session) return;
+
+      let elapsed = Math.floor((Date.now() - session.startTime) / 1000);
+      if (!Number.isFinite(elapsed) || elapsed < 0) {
+        elapsed = 0;
+      }
+
+      const timerElement = document.querySelector('[data-timer="' + sessionId + '"]');
+      if (timerElement) {
+        timerElement.textContent = formatTimeSeconds(elapsed);
+      }
+    }
+
+    function endSession(sessionId) {
+      const session = activeSessions.find(s => s.id === sessionId);
+      if (!session) return;
+
+      currentEndingSession = session;
+
+      const elapsed = Math.floor((Date.now() - session.startTime) / 1000);
+      const duration = formatTimeSeconds(elapsed);
+      const namePart = session.player_name ? ' (' + session.player_name + ')' : '';
+
+      document.getElementById('sessionSummary').textContent =
+        session.type + namePart + ' - Duration: ' + duration;
+      document.getElementById('paymentAmount').value = '';
+      document.getElementById('paymentModal').classList.add('show');
+      document.getElementById('paymentAmount').focus();
+    }
+
+    async function confirmPayment() {
+      const amount = parseFloat(document.getElementById('paymentAmount').value);
+
+      if (isNaN(amount) || amount < 0) {
+        alert('Please enter a valid amount');
+        return;
+      }
+
+      const session = currentEndingSession;
+      const endTime = new Date();
+
+      const durationSec = Math.floor((endTime.getTime() - session.startTime) / 1000);
+      const durationHours = (durationSec / 3600).toFixed(2);
+
+      const { error } = await supabase
+        .from('sessions')
+        .update({
+          end_time: endTime.toISOString(),
+          status: 'completed',
+          amount: amount,
+          duration_hours: durationHours
+        })
+        .eq('id', session.id);
+
+      if (error) {
+        alert('Error ending session: ' + error.message);
+        return;
+      }
+
+      const endMs = endTime.getTime();
+
+      completedSessions.push({
+        id: session.id,
+        type: session.type,
+        startTime: session.startTime,
+        endTime: endMs,
+        duration: durationSec,
+        amount: amount,
+        dateKey: getDateKey(endMs),
+        player_name: session.player_name,
+        status: 'completed'
+      });
+
+      activeSessions = activeSessions.filter(s => s.id !== session.id);
+
+      if (timers[session.id]) {
+        clearInterval(timers[session.id]);
+        delete timers[session.id];
+      }
+
+      closePaymentModal();
+      renderActiveSessions();
+      renderRevenueLog();
+    }
+
+    function closePaymentModal() {
+      document.getElementById('paymentModal').classList.remove('show');
+      currentEndingSession = null;
+    }
+
+    async function cancelSession(sessionId) {
+      const session = activeSessions.find(s => s.id === sessionId);
+      if (!session) return;
+
+      const elapsed = Math.floor((Date.now() - session.startTime) / 1000);
+      const duration = formatTimeSeconds(elapsed);
+      const namePart = session.player_name ? ' (' + session.player_name + ')' : '';
+
+      const confirmed = confirm(
+        'Cancel this session?\n\n' +
+        session.type + namePart +
+        '\nDuration so far: ' + duration +
+        '\n\nThis will remove it from active sessions and mark it as cancelled.'
+      );
+      if (!confirmed) return;
+
+      const endTime = new Date();
+
+      const { error } = await supabase
+        .from('sessions')
+        .update({
+          status: 'cancelled',
+          end_time: endTime.toISOString()
+        })
+        .eq('id', session.id);
+
+      if (error) {
+        alert('Error cancelling session: ' + error.message);
+        return;
+      }
+
+      activeSessions = activeSessions.filter(s => s.id !== session.id);
+      if (timers[session.id]) {
+        clearInterval(timers[session.id]);
+        delete timers[session.id];
+      }
+
+      renderActiveSessions();
+      fetchCompletedSessions();
+    }
+
+    function renderActiveSessions() {
+      const container = document.getElementById('sessionsContainer');
+
+      // clear existing timers so they don't run on stale DOM
+      Object.keys(timers).forEach(id => {
+        clearInterval(timers[id]);
+        delete timers[id];
+      });
+
+      if (!activeSessions.length) {
+        container.innerHTML = '<div class="empty-state">No active sessions</div>';
+        return;
+      }
+
+      container.innerHTML = activeSessions.map(session => {
+        const namePart = session.player_name ? ' (' + session.player_name + ')' : '';
+        return (
+          '<div class="session-card">' +
+            '<div class="session-type">' + session.type + namePart + '</div>' +
+            '<div class="session-info">Started: ' + formatDateTime(session.startTime) + '</div>' +
+            '<div class="session-timer" data-timer="' + session.id + '">00:00:00</div>' +
+            '<button class="btn-end" data-end-id="' + session.id + '">End Session</button>' +
+            '<button class="btn-secondary" data-cancel-id="' + session.id + '">Cancel Session</button>' +
+          '</div>'
+        );
+      }).join('');
+
+      document.querySelectorAll('[data-end-id]').forEach(btn => {
+        btn.onclick = () => endSession(btn.getAttribute('data-end-id'));
+      });
+
+      document.querySelectorAll('[data-cancel-id]').forEach(btn => {
+        btn.onclick = () => cancelSession(btn.getAttribute('data-cancel-id'));
+      });
+
+      activeSessions.forEach(session => {
+        startTimer(session.id);
+      });
+    }
+
+    function renderRevenueLog() {
+      const container = document.getElementById('revenueContainer');
+
+      if (!completedSessions.length) {
+        container.innerHTML = '<div class="empty-state">No sessions logged yet</div>';
+        return;
+      }
+
+      const sessionsByDate = {};
+      completedSessions.forEach(session => {
+        if (!sessionsByDate[session.dateKey]) {
+          sessionsByDate[session.dateKey] = [];
+        }
+        sessionsByDate[session.dateKey].push(session);
+      });
+
+      const sortedDates = Object.keys(sessionsByDate).sort().reverse();
+
+      container.innerHTML = sortedDates.map(dateKey => {
+        const sessions = sessionsByDate[dateKey];
+        const total = sessions.reduce((sum, s) => sum + (s.amount || 0), 0);
+
+        return (
+          '<div class="revenue-date-group">' +
+            '<div class="revenue-date-header">' +
+              '<div class="revenue-date-title">' + formatDate(sessions[0].endTime) + '</div>' +
+              '<div class="revenue-date-total">Total: ₹' + total.toFixed(2) + '</div>' +
+            '</div>' +
+            sessions.map(session => (
+              '<div class="revenue-item">' +
+                '<div class="revenue-item-info">' +
+                  '<div class="revenue-item-type">' +
+                    session.type +
+                    (session.player_name ? ' (' + session.player_name + ')' : '') +
+                    (session.status === "cancelled" ? ' [Cancelled]' : '') +
+                  '</div>' +
+                  '<div class="revenue-item-time">' +
+                    formatDateTime(session.startTime) + ' - ' + formatDateTime(session.endTime) +
+                  '</div>' +
+                '</div>' +
+                '<div class="revenue-item-right">' +
+                  '<div class="revenue-item-duration">' + formatTimeSeconds(session.duration) + '</div>' +
+                  '<div class="revenue-item-amount">₹' + (session.amount || 0).toFixed(2) + '</div>' +
+                  '<button class="btn-edit-amount" data-edit-amount-id="' + session.id + '">Edit</button>' +
+                '</div>' +
+              '</div>'
+            )).join('') +
+          '</div>'
+        );
+      }).join('');
+
+      document.querySelectorAll('[data-edit-amount-id]').forEach(btn => {
+        btn.onclick = () => openEditAmountModal(btn.getAttribute('data-edit-amount-id'));
+      });
+    }
+
+    function openEditAmountModal(sessionId) {
+      const session = completedSessions.find(s => s.id === sessionId);
+      if (!session) return;
+
+      currentEditingSessionId = sessionId;
+      const namePart = session.player_name ? ' (' + session.player_name + ')' : '';
+
+      document.getElementById('editAmountSummary').textContent =
+        session.type + namePart + ' | ' +
+        formatDateTime(session.startTime) + ' - ' + formatDateTime(session.endTime);
+
+      document.getElementById('editAmountInput').value =
+        session.amount != null ? session.amount.toFixed(2) : '';
+      document.getElementById('editAmountModal').classList.add('show');
+      document.getElementById('editAmountInput').focus();
+    }
+
+    function closeEditAmountModal() {
+      document.getElementById('editAmountModal').classList.remove('show');
+      currentEditingSessionId = null;
+    }
+
+    async function saveEditedAmount() {
+      const input = document.getElementById('editAmountInput');
+      const amount = parseFloat(input.value);
+
+      if (isNaN(amount) || amount < 0) {
+        alert('Please enter a valid amount');
+        return;
+      }
+
+      const session = completedSessions.find(s => s.id === currentEditingSessionId);
+      if (!session) {
+        closeEditAmountModal();
+        return;
+      }
+
+      const { error } = await supabase
+        .from('sessions')
+        .update({ amount: amount })
+        .eq('id', session.id);
+
+      if (error) {
+        alert('Error updating amount: ' + error.message);
+        return;
+      }
+
+      session.amount = amount;
+      renderRevenueLog();
+      closeEditAmountModal();
+    }
+
+    function setupRealtime() {
+      supabase
+        .channel('sessions-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions' }, () => {
+          fetchActiveSessions();
+          fetchCompletedSessions();
+        })
+        .subscribe();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchActiveSessions();
+      fetchCompletedSessions();
+      setupRealtime();
+
+      document.getElementById('addPS5Btn').addEventListener('click', () => {
+        const name = prompt('Enter player name for this PS5 session (optional):');
+        const trimmedName = name ? name.trim() : '';
+        checkCapacityAndAddSession('PS5', trimmedName || null);
+      });
+
+      document.getElementById('addPoolBtn').addEventListener('click', () => {
+        checkCapacityAndAddSession('Pool', null);
+      });
+
+      document.getElementById('confirmPaymentBtn').addEventListener('click', confirmPayment);
+      document.getElementById('cancelPaymentBtn').addEventListener('click', closePaymentModal);
+
+      document.getElementById('paymentAmount').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          confirmPayment();
+        }
+      });
+
+      document.getElementById('paymentModal').addEventListener('click', (e) => {
+        if (e.target.id === 'paymentModal') {
+          closePaymentModal();
+        }
+      });
+
+      document.getElementById('editAmountSaveBtn').addEventListener('click', saveEditedAmount);
+      document.getElementById('editAmountCancelBtn').addEventListener('click', closeEditAmountModal);
+
+      document.getElementById('editAmountModal').addEventListener('click', (e) => {
+        if (e.target.id === 'editAmountModal') {
+          closeEditAmountModal();
+        }
+      });
+
+      document.getElementById('editAmountInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          saveEditedAmount();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
