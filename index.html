@@ -416,7 +416,6 @@
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script>
-    // Supabase config – keep your actual URL and anon key here
     const SUPABASE_URL = 'https://vvlvbviumkbuoeqtmgmt.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2bHZidml1bWtidW9lcXRtZ210Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMzMDM4MjMsImV4cCI6MjA3ODg3OTgyM30.cL6bqvMuSQntTJ5c3oYIiNr53s8z6XuPIWWciciRtSs';
 
@@ -489,11 +488,12 @@
       renderActiveSessions();
     }
 
+    // UPDATED: only completed sessions (no cancelled) are loaded into the log
     async function fetchCompletedSessions() {
       const { data, error } = await supabase
         .from('sessions')
         .select('*')
-        .neq('status', 'active')
+        .eq('status', 'completed')   // changed from .neq('status','active')
         .order('end_time', { ascending: true });
 
       if (error) {
@@ -719,13 +719,13 @@
       }
 
       renderActiveSessions();
+      // still safe to refresh completed list; cancelled rows will be ignored
       fetchCompletedSessions();
     }
 
     function renderActiveSessions() {
       const container = document.getElementById('sessionsContainer');
 
-      // clear existing timers so they don't run on stale DOM
       Object.keys(timers).forEach(id => {
         clearInterval(timers[id]);
         delete timers[id];
@@ -796,7 +796,6 @@
                   '<div class="revenue-item-type">' +
                     session.type +
                     (session.player_name ? ' (' + session.player_name + ')' : '') +
-                    (session.status === "cancelled" ? ' [Cancelled]' : '') +
                   '</div>' +
                   '<div class="revenue-item-time">' +
                     formatDateTime(session.startTime) + ' - ' + formatDateTime(session.endTime) +
