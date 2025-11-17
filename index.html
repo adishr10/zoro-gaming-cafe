@@ -246,6 +246,62 @@
       opacity: 0.9;
     }
 
+    .revenue-toggle {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #222;
+      padding: 10px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 1px solid #444;
+    }
+
+    .revenue-toggle h2 {
+      margin-bottom: 0;
+      font-size: 1.4rem;
+    }
+
+    .revenue-toggle span {
+      font-size: 1.2rem;
+      color: #aaa;
+    }
+
+    .revenue-panel {
+      margin-top: 10px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      padding: 15px;
+      display: none;
+      background: #181818;
+    }
+
+    .revenue-panel.open {
+      display: block;
+    }
+
+    .revenue-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .export-btn {
+      background: #22c55e;
+      color: #111;
+      border: none;
+      padding: 8px 14px;
+      font-size: 0.9rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .export-btn:hover {
+      opacity: 0.9;
+    }
+
     .revenue-date-group {
       background: #2a2a2a;
       border: 1px solid #444;
@@ -336,6 +392,50 @@
       background: #555;
     }
 
+    .btn-delete-amount {
+      background: #b91c1c;
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .btn-delete-amount:hover {
+      background: #dc2626;
+    }
+
+    .past-totals {
+      margin-top: 20px;
+    }
+
+    .past-totals h3 {
+      color: #00d9ff;
+      margin-bottom: 10px;
+    }
+
+    .past-total-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 10px;
+      background: #1a1a1a;
+      border-radius: 6px;
+      border: 1px solid #333;
+      margin-bottom: 6px;
+    }
+
+    .past-total-row span:first-child {
+      color: #e0e0e0;
+    }
+
+    .past-total-row span:last-child {
+      color: #4ade80;
+      font-weight: bold;
+    }
+
     .empty-state {
       text-align: center;
       color: #666;
@@ -380,8 +480,23 @@
       </section>
 
       <section class="revenue-log">
-        <h2>Revenue Log</h2>
-        <div id="revenueContainer"></div>
+        <div class="revenue-toggle" id="revenueToggle">
+          <h2>Revenue</h2>
+          <span id="revenueChevron">▼</span>
+        </div>
+
+        <div class="revenue-panel" id="revenuePanel">
+          <div class="revenue-section-header">
+            <h3>Today’s Sessions</h3>
+            <button class="export-btn" id="exportCsvBtn">Export totals as CSV</button>
+          </div>
+          <div id="revenueContainer"></div>
+
+          <div class="past-totals">
+            <h3>Past Days (totals)</h3>
+            <div id="pastTotalsContainer"></div>
+          </div>
+        </div>
       </section>
     </main>
   </div>
@@ -422,7 +537,8 @@
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     let activeSessions = [];
-    let completedSessions = [];
+    let completedSessionsToday = [];
+    let dailyTotals = [];
     let currentEndingSession = null;
     let currentEditingSessionId = null;
     const timers = {};
@@ -466,6 +582,10 @@
       return d.toISOString().split('T')[0];
     }
 
+    function todayKey() {
+      return getDateKey(Date.now());
+    }
+
     async function fetchActiveSessions() {
       const { data, error } = await supabase
         .from('sessions')
@@ -488,12 +608,67 @@
       renderActiveSessions();
     }
 
-    // UPDATED: only completed sessions (no cancelled) are loaded into the log
-    async function fetchCompletedSessions() {
+    async function aggregateOlderDays() {
       const { data, error } = await supabase
         .from('sessions')
         .select('*')
-        .eq('status', 'completed')   // changed from .neq('status','active')
+        .eq('status', 'completed')
+        .order('end_time', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching sessions for aggregation:', error);
+        return;
+      }
+
+      const today = todayKey();
+      const byDate = {};
+
+      data.forEach(row => {
+        if (!row.end_time) return;
+        const endMs = new Date(row.end_time).getTime();
+        const dateKey = getDateKey(endMs);
+        if (dateKey === today) return;
+
+        if (!byDate[dateKey]) byDate[dateKey] = { total: 0, ids: [] };
+        byDate[dateKey].total += row.amount || 0;
+        byDate[dateKey].ids.push(row.id);
+      });
+
+      const dates = Object.keys(byDate);
+      if (!dates.length) return;
+
+      for (const dKey of dates) {
+        const totalAmount = byDate[dKey].total;
+
+        const { error: upsertError } = await supabase
+          .from('daily_totals')
+          .upsert(
+            { date: dKey, total_amount: totalAmount },
+            { onConflict: 'date' }
+          );
+
+        if (upsertError) {
+          console.error('Error upserting daily_totals for', dKey, upsertError);
+        }
+
+        const { error: deleteError } = await supabase
+          .from('sessions')
+          .delete()
+          .in('id', byDate[dKey].ids);
+
+        if (deleteError) {
+          console.error('Error deleting old sessions for', dKey, deleteError);
+        }
+      }
+    }
+
+    async function fetchCompletedToday() {
+      const today = todayKey();
+
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('status', 'completed')
         .order('end_time', { ascending: true });
 
       if (error) {
@@ -501,8 +676,12 @@
         return;
       }
 
-      completedSessions = data
+      completedSessionsToday = data
         .filter(row => row.end_time)
+        .filter(row => {
+          const endMs = new Date(row.end_time).getTime();
+          return getDateKey(endMs) === today;
+        })
         .map(row => {
           const startMs = new Date(row.start_time).getTime();
           const endMs = new Date(row.end_time).getTime();
@@ -521,6 +700,21 @@
         });
 
       renderRevenueLog();
+    }
+
+    async function fetchDailyTotals() {
+      const { data, error } = await supabase
+        .from('daily_totals')
+        .select('*')
+        .order('date', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching daily_totals:', error);
+        return;
+      }
+
+      dailyTotals = data || [];
+      renderPastTotals();
     }
 
     async function checkCapacityAndAddSession(type, playerName) {
@@ -651,18 +845,22 @@
       }
 
       const endMs = endTime.getTime();
+      const dateK = getDateKey(endMs);
+      const todayK = todayKey();
 
-      completedSessions.push({
-        id: session.id,
-        type: session.type,
-        startTime: session.startTime,
-        endTime: endMs,
-        duration: durationSec,
-        amount: amount,
-        dateKey: getDateKey(endMs),
-        player_name: session.player_name,
-        status: 'completed'
-      });
+      if (dateK === todayK) {
+        completedSessionsToday.push({
+          id: session.id,
+          type: session.type,
+          startTime: session.startTime,
+          endTime: endMs,
+          duration: durationSec,
+          amount: amount,
+          dateKey: dateK,
+          player_name: session.player_name,
+          status: 'completed'
+        });
+      }
 
       activeSessions = activeSessions.filter(s => s.id !== session.id);
 
@@ -719,8 +917,6 @@
       }
 
       renderActiveSessions();
-      // still safe to refresh completed list; cancelled rows will be ignored
-      fetchCompletedSessions();
     }
 
     function renderActiveSessions() {
@@ -765,13 +961,13 @@
     function renderRevenueLog() {
       const container = document.getElementById('revenueContainer');
 
-      if (!completedSessions.length) {
-        container.innerHTML = '<div class="empty-state">No sessions logged yet</div>';
+      if (!completedSessionsToday.length) {
+        container.innerHTML = '<div class="empty-state">No sessions logged today</div>';
         return;
       }
 
       const sessionsByDate = {};
-      completedSessions.forEach(session => {
+      completedSessionsToday.forEach(session => {
         if (!sessionsByDate[session.dateKey]) {
           sessionsByDate[session.dateKey] = [];
         }
@@ -788,7 +984,7 @@
           '<div class="revenue-date-group">' +
             '<div class="revenue-date-header">' +
               '<div class="revenue-date-title">' + formatDate(sessions[0].endTime) + '</div>' +
-              '<div class="revenue-date-total">Total: ₹' + total.toFixed(2) + '</div>' +
+              '<div class="revenue-date-total">Total today: ₹' + total.toFixed(2) + '</div>' +
             '</div>' +
             sessions.map(session => (
               '<div class="revenue-item">' +
@@ -804,6 +1000,7 @@
                 '<div class="revenue-item-right">' +
                   '<div class="revenue-item-duration">' + formatTimeSeconds(session.duration) + '</div>' +
                   '<div class="revenue-item-amount">₹' + (session.amount || 0).toFixed(2) + '</div>' +
+                  '<button class="btn-delete-amount" data-delete-amount-id="' + session.id + '">Delete</button>' +
                   '<button class="btn-edit-amount" data-edit-amount-id="' + session.id + '">Edit</button>' +
                 '</div>' +
               '</div>'
@@ -815,10 +1012,36 @@
       document.querySelectorAll('[data-edit-amount-id]').forEach(btn => {
         btn.onclick = () => openEditAmountModal(btn.getAttribute('data-edit-amount-id'));
       });
+
+      document.querySelectorAll('[data-delete-amount-id]').forEach(btn => {
+        btn.onclick = () => deleteRevenueEntry(btn.getAttribute('data-delete-amount-id'));
+      });
+    }
+
+    function renderPastTotals() {
+      const container = document.getElementById('pastTotalsContainer');
+      if (!dailyTotals.length) {
+        container.innerHTML = '<div class="empty-state">No past totals yet</div>';
+        return;
+      }
+
+      const today = todayKey();
+
+      container.innerHTML = dailyTotals
+        .filter(row => row.date !== today)
+        .map(row => {
+          const d = new Date(row.date + 'T00:00:00');
+          return (
+            '<div class="past-total-row">' +
+              '<span>' + formatDate(d.getTime()) + '</span>' +
+              '<span>₹' + Number(row.total_amount || 0).toFixed(2) + '</span>' +
+            '</div>'
+          );
+        }).join('') || '<div class="empty-state">No past totals yet</div>';
     }
 
     function openEditAmountModal(sessionId) {
-      const session = completedSessions.find(s => s.id === sessionId);
+      const session = completedSessionsToday.find(s => s.id === sessionId);
       if (!session) return;
 
       currentEditingSessionId = sessionId;
@@ -848,7 +1071,7 @@
         return;
       }
 
-      const session = completedSessions.find(s => s.id === currentEditingSessionId);
+      const session = completedSessionsToday.find(s => s.id === currentEditingSessionId);
       if (!session) {
         closeEditAmountModal();
         return;
@@ -869,20 +1092,83 @@
       closeEditAmountModal();
     }
 
+    async function deleteRevenueEntry(sessionId) {
+      const session = completedSessionsToday.find(s => s.id === sessionId);
+      if (!session) return;
+
+      const namePart = session.player_name ? ' (' + session.player_name + ')' : '';
+      const confirmDelete = confirm(
+        'Delete this entry?\n\n' +
+        session.type + namePart +
+        '\n' + formatDateTime(session.startTime) + ' - ' + formatDateTime(session.endTime) +
+        '\nAmount: ₹' + (session.amount || 0).toFixed(2)
+      );
+      if (!confirmDelete) return;
+
+      const { error } = await supabase
+        .from('sessions')
+        .delete()
+        .eq('id', session.id);
+
+      if (error) {
+        alert('Error deleting entry: ' + error.message);
+        return;
+      }
+
+      completedSessionsToday = completedSessionsToday.filter(s => s.id !== session.id);
+      renderRevenueLog();
+    }
+
     function setupRealtime() {
       supabase
         .channel('sessions-realtime')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions' }, () => {
           fetchActiveSessions();
-          fetchCompletedSessions();
+          fetchCompletedToday();
         })
         .subscribe();
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      fetchActiveSessions();
-      fetchCompletedSessions();
-      setupRealtime();
+    function setupRevenueToggle() {
+      const toggle = document.getElementById('revenueToggle');
+      const panel = document.getElementById('revenuePanel');
+      const chevron = document.getElementById('revenueChevron');
+
+      toggle.addEventListener('click', () => {
+        const open = panel.classList.toggle('open');
+        chevron.textContent = open ? '▲' : '▼';
+      });
+    }
+
+    function exportTotalsCsv() {
+      if (!dailyTotals.length) {
+        alert('No totals to export yet.');
+        return;
+      }
+
+      const rows = [['date', 'total_amount']];
+      dailyTotals.forEach(row => {
+        rows.push([row.date, Number(row.total_amount || 0).toFixed(2)]);
+      });
+
+      const csvContent = rows.map(r => r.join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      const today = todayKey();
+      link.download = 'zoro_totals_' + today + '.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      setupRevenueToggle();
+
+      document.getElementById('exportCsvBtn').addEventListener('click', exportTotalsCsv);
 
       document.getElementById('addPS5Btn').addEventListener('click', () => {
         const name = prompt('Enter player name for this PS5 session (optional):');
@@ -923,6 +1209,15 @@
           saveEditedAmount();
         }
       });
+
+      await aggregateOlderDays();
+      await Promise.all([
+        fetchActiveSessions(),
+        fetchCompletedToday(),
+        fetchDailyTotals()
+      ]);
+
+      setupRealtime();
     });
   </script>
 </body>
